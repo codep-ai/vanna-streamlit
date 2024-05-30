@@ -1,3 +1,5 @@
+[server]
+port = 5035
 [theme]
 primaryColor="#2af598"
 backgroundColor="#111827"

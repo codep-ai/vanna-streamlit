@@ -1,10 +1,14 @@
 import streamlit as st
 
-from vanna.remote import VannaDefault
+#from vanna.remote import VannaDefault
+from remote import VannaDefault
 
 @st.cache_resource(ttl=3600)
 def setup_vanna():
-    vn = VannaDefault(api_key=st.secrets.get("VANNA_API_KEY"), model='chinook')
+    APIKEY=st.secrets.get("VANNA_API_KEY")
+    selected_db=st.session_state["selected_db"]
+    vn = VannaDefault(api_key=APIKEY, model='chinook')
+    #vn.connect_db_2()
     vn.connect_to_sqlite("https://vanna.ai/Chinook.sqlite")
     return vn
 
@@ -15,14 +19,27 @@ def generate_questions_cached():
 
 
 @st.cache_data(show_spinner="Generating SQL query ...")
-def generate_sql_cached(question: str):
+def generate_sql_cached(question: str, selected_db: str):
     vn = setup_vanna()
-    return vn.generate_sql(question=question, allow_llm_to_see_data=True)
+    if selected_db =='Snowflake':
+        database=st.secrets["SNOWFLAKE_DATABASE"]
+        schema=st.secrets["SNOWFLAKE_SCHEMA"]
+        assumption = ' in ' + selected_db + f' , assuming database name is {database} and schema name is {schema} '
+    elif selected_db =='Redshift':
+        database=st.secrets["REDSHIFT_DBNAME"]
+        schema=st.secrets["REDSHIFT_SCHEMA"]
+        assumption = ' in ' + selected_db + f' , assuming database name is {database} and schema name is {schema} '
+    else:
+        assumption=''
+        pass
+    question_db = question + assumption
+    return vn.generate_sql(question=question_db, allow_llm_to_see_data=True)
 
 @st.cache_data(show_spinner="Checking for valid SQL ...")
-def is_sql_valid_cached(sql: str):
+def is_sql_valid_cached(sql: str, selected_db: str):
     vn = setup_vanna()
-    return vn.is_sql_valid(sql=sql)
+    return vn.is_sql_valid(sql=sql, selected_db=selected_db)
+    #return vn.is_sql_valid(sql=sql)
 
 @st.cache_data(show_spinner="Running SQL query ...")
 def run_sql_cached(sql: str):
